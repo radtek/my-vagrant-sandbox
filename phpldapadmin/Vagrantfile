@@ -1,0 +1,128 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+IP_ADDRESS="192.168.100.6"
+HOST_NAME="phpldapadmin"
+
+LDAP_SERVER="192.168.100.4"
+LDAP_DOMAIN="dc=example,dc=com"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/centos-7.4"
+
+  config.vm.network "forwarded_port", guest: 8006, host: 8006, host_ip: "127.0.0.1"
+  
+  config.vm.network "private_network", ip: IP_ADDRESS
+  
+  config.vm.hostname = HOST_NAME
+  
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+	vb.cpus = "2"
+	vb.name = HOST_NAME
+  end
+  #
+  config.vm.provision "shell",
+  inline: <<-SHELL
+    set -x
+    #
+	yum install -y epel-release
+	yum install -y nginx
+	#
+	systemctl start nginx.service
+	systemctl enable nginx.service
+	systemctl status nginx.service
+	#
+	curl -I -s localhost
+	#
+  SHELL
+  #
+  config.vm.provision "shell",
+  inline: <<-SHELL
+    set -x
+    #
+	yum install -y php-fpm
+	#
+	systemctl start php-fpm.service
+	systemctl enable php-fpm.service
+	systemctl status php-fpm.service
+	#
+	echo '
+server {
+	listen 8080;
+	server_name localhost;
+	location ~ \.php$ {
+		root           /usr/share/nginx/html;
+		#fastcgi_pass   127.0.0.1:9000;
+		fastcgi_pass   unix:/var/run/php-fpm.sock;
+		fastcgi_index  index.php;
+		fastcgi_param  SCRIPT_FILENAME   $document_root$fastcgi_script_name;
+		include        fastcgi_params;
+	}
+}
+' | tee /etc/nginx/conf.d/php-fpm.conf
+	#
+	nginx -t
+	#
+	if [ ! -f /etc/php-fpm.d/www.conf.default ]
+	then cp -v /etc/php-fpm.d/www.conf /etc/php-fpm.d/www.conf.default
+	else cp -v /etc/php-fpm.d/www.conf.default /etc/php-fpm.d/www.conf
+	fi
+	#
+	#sed 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/' -i /etc/php-fpm.d/www.conf
+	sed 's|listen = 127.0.0.1:9000|listen = /var/run/php-fpm.sock|' -i /etc/php-fpm.d/www.conf
+	sed 's/;listen.owner = nobody/listen.owner = nginx/' -i /etc/php-fpm.d/www.conf
+	sed 's/;listen.group = nobody/listen.group = nginx/' -i /etc/php-fpm.d/www.conf
+	sed 's/user = apache/user = nginx/' -i /etc/php-fpm.d/www.conf
+	sed 's/group = apache/group = nginx/' -i /etc/php-fpm.d/www.conf
+	diff /etc/php-fpm.d/www.conf.default /etc/php-fpm.d/www.conf
+	#
+	php-fpm -t
+	#
+	systemctl restart nginx.service
+	systemctl restart php-fpm.service
+	#
+	echo '<?php phpInfo() ?>' | tee /usr/share/nginx/html/index.php
+	#
+	curl -I -s localhost:8080/index.php
+	#
+  SHELL
+  #
+  config.vm.provision "shell",
+  env: {
+	"LDAP_SERVER" => LDAP_SERVER,
+	"LDAP_DOMAIN" => LDAP_DOMAIN
+  },
+  inline: <<-SHELL
+    set -x
+    #
+	yum install -y phpldapadmin
+	#
+	echo '
+server {
+	listen 8006;
+	server_name localhost;
+	root /usr/share/phpldapadmin/htdocs;
+	index index.php index.html;
+	location ~ \.php$ {
+		#fastcgi_pass   127.0.0.1:9000;
+		fastcgi_pass   unix:/var/run/php-fpm.sock;
+		fastcgi_index  index.php;
+		fastcgi_param  SCRIPT_FILENAME   $document_root$fastcgi_script_name;
+		include        fastcgi_params;
+	}
+}
+' | tee /etc/nginx/conf.d/phpldapadmin.conf
+	#
+	nginx -t
+	#	
+	systemctl restart nginx.service
+	systemctl restart php-fpm.service
+	#
+	chgrp nginx /etc/phpldapadmin/config.php
+	chgrp -R nginx /var/lib/php/session/
+	#
+	curl -I -s localhost:8006/index.php
+	#
+  SHELL
+end
