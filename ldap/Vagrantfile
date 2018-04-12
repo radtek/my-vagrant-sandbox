@@ -35,6 +35,8 @@ Vagrant.configure("2") do |config|
 	"USER_PASSWORD" => USER_PASSWORD
   },
   inline: <<-SHELL
+    set -x
+	#
     yum -y install openldap compat-openldap openldap-clients openldap-servers openldap-servers-sql openldap-devel
 	#
 	systemctl start slapd.service
