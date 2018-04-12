@@ -1,0 +1,155 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+IP_ADDRESS="192.168.100.4"
+HOST_NAME="ldap"
+
+SLAP_PASSWORD="passw0rt"
+LDAP_DOMAIN="dc=example,dc=com"
+USER_NAME="homer"
+USER_PASSWORD="t0p!s3cr3t"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/centos-7.4"
+
+  config.vm.network "forwarded_port", guest: 389, host: 3389, host_ip: "127.0.0.1"
+  #config.vm.network "forwarded_port", guest: 636, host: 3636, host_ip: "127.0.0.1" # ldaps://
+
+  config.vm.network "private_network", ip: IP_ADDRESS
+  
+  config.vm.hostname = HOST_NAME
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+	vb.cpus = "1"
+	vb.name = HOST_NAME
+  end
+  #
+  # https://www.itzgeek.com/how-tos/linux/centos-how-tos/step-step-openldap-server-configuration-centos-7-rhel-7.html
+  #
+  config.vm.provision "shell",
+  env: {
+	"SLAP_PASSWORD" => SLAP_PASSWORD,
+	"LDAP_DOMAIN" => LDAP_DOMAIN,
+	"USER_NAME" => USER_NAME,
+	"USER_PASSWORD" => USER_PASSWORD
+  },
+  inline: <<-SHELL
+    yum -y install openldap compat-openldap openldap-clients openldap-servers openldap-servers-sql openldap-devel
+	#
+	systemctl start slapd.service
+	systemctl enable slapd.service
+	#
+	SLAP_PASSWORD_SSHA=$(slappasswd -h {SSHA} -s ${SLAP_PASSWORD})
+	echo "SLAP_PASSWORD_SSHA"=${SLAP_PASSWORD_SSHA}
+	#
+	echo '
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcSuffix
+olcSuffix: '${LDAP_DOMAIN}'
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcRootDN
+olcRootDN: cn=ldapadm,'${LDAP_DOMAIN}'
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcRootPW
+olcRootPW: '${SLAP_PASSWORD_SSHA}'
+' | tee db.ldif
+    ldapmodify -Y EXTERNAL  -H ldapi:/// -f db.ldif
+    #
+	echo '
+dn: olcDatabase={1}monitor,cn=config
+changetype: modify
+replace: olcAccess
+olcAccess: {0} to *
+  by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external, cn=auth" read 
+  by dn.base="cn=ldapadm,'${LDAP_DOMAIN}'" read
+  by * none
+' | tee monitor.ldif
+    ldapmodify -Y EXTERNAL  -H ldapi:/// -f monitor.ldif
+    #
+	cp -v /usr/share/openldap-servers/DB_CONFIG.example /var/lib/ldap/DB_CONFIG
+	chown -v ldap:ldap /var/lib/ldap/*
+	#
+	ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/cosine.ldif
+	ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/nis.ldif 
+	ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/inetorgperson.ldif
+	#
+	LDAP_TOP_DOMAIN=$(echo $LDAP_DOMAIN | awk -F, '{print $1}' | awk -F= '{print $2}')
+	echo LDAP_TOP_DOMAIN=${LDAP_TOP_DOMAIN}
+	echo 'dn: '${LDAP_DOMAIN}'
+dc: '${LDAP_TOP_DOMAIN}'
+objectClass: top
+objectClass: domain
+
+dn: cn=ldapadm,'${LDAP_DOMAIN}'
+objectClass: organizationalRole
+cn: ldapadm
+description: LDAP Manager
+
+dn: ou=People,'${LDAP_DOMAIN}'
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Group,'${LDAP_DOMAIN}'
+objectClass: organizationalUnit
+ou: Group
+' | tee base.ldif
+    ldapadd -x -D "cn=ldapadm,${LDAP_DOMAIN}" -w "${SLAP_PASSWORD}" -f base.ldif
+	#
+	echo '# chpwd.ldif
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+add: olcAccess
+olcAccess: {0}
+  to attrs=userPassword,shadowLastChange
+  by self write
+  by dn="cn=ldapadm,'${LDAP_DOMAIN}'" write
+  by anonymous auth
+  by * none
+olcAccess: {1}
+  to dn.base=""
+  by * read
+olcAccess: {2}
+  to *
+  by self write
+  by dn="cn=ldapadm,'${LDAP_DOMAIN}'" write
+  by * read
+' | tee chpwd.ldif
+    ldapadd -Y EXTERNAL -H ldapi:/// -f chpwd.ldif
+	#
+	echo '# '${USER_NAME}'.ldif
+dn: uid='${USER_NAME}',ou=People,'${LDAP_DOMAIN}'
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: '${USER_NAME}'
+uid: '${USER_NAME}'
+uidNumber: 9999
+gidNumber: 100
+homeDirectory: /home/'${USER_NAME}'
+loginShell: /bin/bash
+gecos: '${USER_FULL_NAME:-$USER_NAME}'
+userPassword: {crypt}x
+shadowLastChange: 0
+shadowMin: 0
+shadowMax: 99999
+shadowWarning: 7
+'  | tee ${USER_NAME}.ldif
+	ldapadd -x -D "cn=ldapadm,${LDAP_DOMAIN}" -w "${SLAP_PASSWORD}" -f ${USER_NAME}.ldif
+	#
+	ldappasswd -D "cn=ldapadm,${LDAP_DOMAIN}" -w "${SLAP_PASSWORD}" \
+	  -x "uid=${USER_NAME},ou=People,${LDAP_DOMAIN}" -s "${USER_PASSWORD}"
+	#
+	ldapsearch -x cn="${USER_NAME}" -b "${LDAP_DOMAIN}"
+	#
+	echo 'local4.* /var/log/ldap.log' >> /etc/rsyslog.conf
+	systemctl restart rsyslog.service
+	#
+  SHELL
+end
