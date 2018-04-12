@@ -1,0 +1,61 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+IP_ADDRESS="192.168.100.5"
+HOST_NAME="ldapclient"
+
+LDAP_SERVER="192.168.100.4"
+LDAP_DOMAIN="dc=example,dc=com"
+USER_NAME="homer"
+USER_PASSWORD="t0p!s3cr3t"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/centos-7.4"
+
+  #config.vm.network "forwarded_port", guest: 389, host: 3389, host_ip: "127.0.0.1"
+  
+  config.vm.network "private_network", ip: IP_ADDRESS
+  
+  config.vm.hostname = HOST_NAME
+  
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "128"
+	vb.cpus = "1"
+	vb.name = HOST_NAME
+  end
+  #
+  # https://www.itzgeek.com/how-tos/linux/centos-how-tos/step-step-openldap-server-configuration-centos-7-rhel-7.html
+  #
+  config.vm.provision "shell",
+  env: {
+	"LDAP_SERVER" => LDAP_SERVER,
+	"LDAP_DOMAIN" => LDAP_DOMAIN,
+	"USER_NAME" => USER_NAME,
+	"USER_PASSWORD" => USER_PASSWORD
+  },
+  inline: <<-SHELL
+    set -x
+    #
+	yum install -y openldap-clients nss-pam-ldapd
+	#
+	echo LDAP_SERVER=${LDAP_SERVER}
+	echo LDAP_DOMAIN=${LDAP_DOMAIN}
+	#
+	authconfig --enableldap \
+	  --enableldapauth \
+	  --ldapserver="${LDAP_SERVER}" \
+	  --ldapbasedn="${LDAP_DOMAIN}" \
+	  --enablemkhomedir \
+	  --update
+	#
+	systemctl restart nslcd.service
+	#
+	getent passwd ${USER_NAME}
+	#
+	# find out port using 
+	# $ vagrant ssh-config
+	# and check login
+	# $ ssh -l <user_name> -p <port_number> localhost
+	#
+  SHELL
+end
