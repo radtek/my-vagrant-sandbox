@@ -1,0 +1,100 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+HOST_NAME="edbas10NEW"
+IP_ADDRESS="192.168.100.11"
+SSH_PORT=2211
+
+EDB_YUM_USERNAME=ENV["EDB_YUM_USERNAME"]
+EDB_YUM_PASSWORD=ENV["EDB_YUM_PASSWORD"]
+
+if ( ARGV.include?("up") && ! ARGV.include?("--no-provision") ) ||
+   ( ARGV.include?("reload") && ARGV.include?("--provision") ) ||
+   ARGV.include?("provision")
+  variables = %w{EDB_YUM_USERNAME EDB_YUM_PASSWORD}
+  missing = variables.find_all { |v| ENV[v] == nil }
+  unless missing.empty?
+    puts "FATAL: The following variables are missing and are needed to run this script: #{missing.join(', ')}."
+    exit
+  end
+end
+
+$script = <<-SCRIPT
+set -x
+#
+yum-config-manager --quiet --enable edbas10 | grep "enabled"
+yum-config-manager --quiet --enable enterprisedb-dependencies | grep "enabled"
+#
+yum install -y edb-as10
+#
+/usr/edb/as10/bin/edb-as-10-setup initdb
+#
+systemctl start edb-as-10.service
+systemctl enable edb-as-10.service
+systemctl status edb-as-10.service
+#
+psql --version
+#
+getent passwd enterprisedb
+getent group enterprisedb
+#
+echo "export PGDATA=/var/lib/edb/as10/data/" | tee -a /etc/profile
+set +x
+source /etc/profile
+set -x
+echo PGDATA=$PGDATA
+#
+find / -name pg_hba.conf 2>/dev/null
+#
+if [ ! -f /var/lib/edb/as10/data/pg_hba.conf.default ]
+then cp -v /var/lib/edb/as10/data/pg_hba.conf /var/lib/edb/as10/data/pg_hba.conf.default
+else cp -v /var/lib/edb/as10/data/pg_hba.conf.default /var/lib/edb/as10/data/pg_hba.conf
+fi
+#
+sed 's/\r//g' -i /var/lib/edb/as10/data/pg_hba.conf.add # remove Windows CR
+cat /vagrant/pg_hba.conf.add | tee -a /var/lib/edb/as10/data/pg_hba.conf
+cat $(sudo find / -name pg_hba.conf 2>/dev/null | head -n 1) | grep -v '^#' | grep -v '^$'
+#
+systemctl restart edb-as-10.service
+#
+chown -v enterprisedb /var/lib/edb/
+SCRIPT
+
+$vagrant_script = <<-SCRIPT
+set -x
+sudo su - enterprisedb <<EOF
+psql -d edb -f /vagrant/scott.ddl
+psql -d edb -f /vagrant/hr.ddl
+psql -d edb -f /vagrant/gdwhanlt.ddl
+EOF
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/centos-7.4"
+  #
+  config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
+  #
+  config.vm.network "forwarded_port", guest: 5444, host: 6444, host_ip: "127.0.0.1"
+  #
+  config.vm.network "private_network", ip: IP_ADDRESS
+  #
+  config.vm.hostname = HOST_NAME
+  #
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "2048"
+	vb.cpus = "2"
+	vb.name = HOST_NAME
+  end
+  #
+  config.vm.provision "shell", path: "../common/avahi.sh"
+  #
+  config.vm.provision "shell", env: {
+    "EDB_YUM_USERNAME" => EDB_YUM_USERNAME,
+	"EDB_YUM_PASSWORD" => EDB_YUM_PASSWORD },
+   path: "../common/edbrepo.sh"
+  #
+  config.vm.provision "shell", inline: $script
+  #
+  config.vm.provision "shell", inline: $vagrant_script
+  #
+end

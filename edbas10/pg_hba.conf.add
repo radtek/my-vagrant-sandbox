@@ -1,0 +1,20 @@
+# additional entries for pg_hba.conf
+# will be appended to the original file during provisioning
+
+host    mtk_scott_db       mtk_scott     10.0.2.2/32            md5
+host    mtk_scott_db       mtk_scott     127.0.0.1/32           md5
+host    mtk_scott_db       mtk_scott     198.168.100.10/32      md5
+host    mtk_scott_db       mtk_scott     198.168.100.11/32      md5
+
+host    mtk_hr_db          mtk_hr        10.0.2.2/32            md5
+host    mtk_hr_db          mtk_hr        127.0.0.1/32           md5
+host    mtk_hr_db          mtk_hr        198.168.100.10/32      md5
+host    mtk_hr_db          mtk_hr        198.168.100.11/32      md5
+
+host    mtk_gdwhanlt_db    mtk_gdwhanlt  10.0.2.2/32            md5
+host    mtk_gdwhanlt_db    mtk_gdwhanlt  127.0.0.1/32           md5
+host    mtk_gdwhanlt_db    mtk_gdwhanlt  198.168.100.10/32      md5
+host    mtk_gdwhanlt_db    mtk_gdwhanlt  198.168.100.11/32      md5
+
+# do not forget to restart edbas 
+# systemctl start edb-as-10.service
