@@ -1,0 +1,73 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+HOST_NAME="ansible"
+IP_ADDRESS="192.168.100.8"
+SSH_PORT=2208
+
+$sudo_script = <<-SCRIPT
+set -x
+#
+yum install -y epel-release
+#
+yum install -y ansible
+#
+ansible --version
+#
+SCRIPT
+
+$vagrant_script = <<-SCRIPT
+set -x
+#
+whoami # should be vagrant
+#
+ansible --version
+#
+ansible -m ping localhost
+#
+rm -f .ssh/id_rsa
+rm -f .ssh/id_rsa.pub -v
+ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -q -N ""
+#
+if [ -f ~/.ssh/known_hosts ]; then ssh-keygen -R ansibletarget.local; fi
+ssh-keyscan -H ansibletarget.local >> ~/.ssh/known_hosts
+#
+echo vagrant | tee vagrant.passwd
+sshpass -f vagrant.passwd ssh-copy-id -i ~/.ssh/id_rsa vagrant@ansibletarget.local -f
+#
+echo "ansibletarget.local" | tee ~/inventory
+ansible -m ping -i inventory all
+#
+SCRIPT
+  
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/centos-7.4"
+
+  config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
+  
+  config.vm.network "private_network", ip: IP_ADDRESS
+  
+  config.vm.hostname = HOST_NAME
+  
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "512"
+	vb.cpus = "2"
+	vb.name = HOST_NAME
+  end
+  
+  config.vm.provision "shell", path: "../common/avahi.sh"
+
+  config.vm.provision "shell",
+  env: {
+	"IP_ADDRESS" => IP_ADDRESS,
+	"HOST_NAME" => HOST_NAME
+  }, inline: $sudo_script
+  #
+  config.vm.provision "shell",
+  env: {
+	"IP_ADDRESS" => IP_ADDRESS,
+	"HOST_NAME" => HOST_NAME
+  },
+  privileged: false,
+  inline: $vagrant_script
+end
