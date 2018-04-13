@@ -1,0 +1,56 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+HOST_NAME="avahi"
+IP_ADDRESS="192.168.100.7"
+
+$script = <<-SCRIPT
+#echo "and now I'm there!"
+set -x
+#
+getent hosts $(hostname)
+ping -c3 $(hostname)
+getent hosts $(hostname).local
+ping -c3 $(hostname).local
+getent hosts $(hostname)
+ping -c3 $(hostname)
+getent hosts $(hostname).local
+ping -c3 $(hostname).local
+#
+getent hosts 127.0.0.1
+ping -c3 127.0.0.1
+#
+yum install -y avahi-tools
+#
+avahi-resolve-host-name ${HOST_NAME}.local
+avahi-resolve --name ${HOST_NAME}.local
+avahi-resolve-address $IP_ADDRESS
+avahi-resolve --address $IP_ADDRESS
+#
+hostname
+avahi-resolve-host-name $(hostname).local
+avahi-resolve --name $(hostname).local
+hostname -I
+avahi-resolve --address $(hostname -I)
+#
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/centos-7.4"
+
+  config.vm.network "private_network", ip: IP_ADDRESS
+  
+  config.vm.hostname = HOST_NAME
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "256"
+    vb.cpus = "2"
+    vb.name = HOST_NAME
+  end
+
+  config.vm.provision "shell", path: "../common/avahi.sh"
+
+  config.vm.provision "shell",
+  inline: $script
+  
+end
