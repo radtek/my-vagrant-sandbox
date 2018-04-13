@@ -1,3 +1,5 @@
+if [[ "$(systemctl is-active avahi-daemon)" == "active" ]]; then exit 0; fi
+#
 yum install -y epel-release # needed for nss-mdns
 yum install -y avahi nss-mdns
 systemctl start avahi-daemon
