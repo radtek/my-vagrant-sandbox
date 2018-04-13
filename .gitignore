@@ -10,3 +10,4 @@ downloads/*.zip
 downloads/*.gz
 downloads/*.tgz
 downloads/*.jar
+downloads/downloads.*/*
