@@ -3,6 +3,7 @@
 
 HOST_NAME="!!!yourhostname!!!"
 IP_ADDRESS="192.168.100.!!!"
+SSH_PORT=22!! # if possible, use port number equal to the last octet of the ip adress (works for 0..99 only, of course)
 
 $script = <<-SCRIPT
 set -x
@@ -19,7 +20,7 @@ SCRIPT
 Vagrant.configure("2") do |config|
   config.vm.box = "bento/centos-7.4"
 
-  config.vm.network "forwarded_port", guest: 22, host: 220!!!, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
   
   config.vm.network "private_network", ip: IP_ADDRESS
   
