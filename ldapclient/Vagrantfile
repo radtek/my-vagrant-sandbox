@@ -12,6 +12,8 @@ USER_PASSWORD="t0p!s3cr3t"
 Vagrant.configure("2") do |config|
   config.vm.box = "bento/centos-7.4"
 
+  config.vm.network "forwarded_port", guest: 22, host: 2205, host_ip: "127.0.0.1"
+  #config.vm.network "forwarded_port", guest: 5353, host: 5353, host_ip: "127.0.0.1"
   #config.vm.network "forwarded_port", guest: 389, host: 3389, host_ip: "127.0.0.1"
   
   config.vm.network "private_network", ip: IP_ADDRESS

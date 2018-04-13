@@ -12,6 +12,7 @@ USER_PASSWORD="t0p!s3cr3t"
 Vagrant.configure("2") do |config|
   config.vm.box = "bento/centos-7.4"
 
+  config.vm.network "forwarded_port", guest: 22, host: 2204, host_ip: "127.0.0.1"
   config.vm.network "forwarded_port", guest: 389, host: 3389, host_ip: "127.0.0.1"
   #config.vm.network "forwarded_port", guest: 636, host: 3636, host_ip: "127.0.0.1" # ldaps://
 
