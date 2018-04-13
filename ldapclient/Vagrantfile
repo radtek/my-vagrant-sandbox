@@ -4,7 +4,7 @@
 IP_ADDRESS="192.168.100.5"
 HOST_NAME="ldapclient"
 
-LDAP_SERVER="192.168.100.4"
+LDAP_SERVER="ldap.local"
 LDAP_DOMAIN="dc=example,dc=com"
 USER_NAME="homer"
 USER_PASSWORD="t0p!s3cr3t"
@@ -14,7 +14,6 @@ Vagrant.configure("2") do |config|
 
   config.vm.network "forwarded_port", guest: 22, host: 2205, host_ip: "127.0.0.1"
   #config.vm.network "forwarded_port", guest: 5353, host: 5353, host_ip: "127.0.0.1"
-  #config.vm.network "forwarded_port", guest: 389, host: 3389, host_ip: "127.0.0.1"
   
   config.vm.network "private_network", ip: IP_ADDRESS
   
@@ -25,6 +24,9 @@ Vagrant.configure("2") do |config|
 	vb.cpus = "1"
 	vb.name = HOST_NAME
   end
+  
+  config.vm.provision "shell", path: "../common/avahi.sh"
+
   #
   # https://www.itzgeek.com/how-tos/linux/centos-how-tos/step-step-openldap-server-configuration-centos-7-rhel-7.html
   #

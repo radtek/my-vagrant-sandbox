@@ -25,6 +25,8 @@ Vagrant.configure("2") do |config|
 	vb.cpus = "2"
 	vb.name = HOST_NAME
   end
+  
+  config.vm.provision "shell", path: "../common/avahi.sh"
   #
   # https://www.itzgeek.com/how-tos/linux/centos-how-tos/step-step-openldap-server-configuration-centos-7-rhel-7.html
   #
@@ -155,4 +157,5 @@ shadowWarning: 7
 	systemctl restart rsyslog.service
 	#
   SHELL
+
 end
