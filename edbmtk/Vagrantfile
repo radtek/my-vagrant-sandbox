@@ -1,0 +1,73 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+HOST_NAME="edbmtk"
+IP_ADDRESS="192.168.100.10"
+SSH_PORT=2210 # if possible, use port number equal to the last octet of the ip adress (works for 0..99 only, of course)
+
+EDB_YUM_USERNAME=ENV["EDB_YUM_USERNAME"]
+EDB_YUM_PASSWORD=ENV["EDB_YUM_PASSWORD"]
+
+$script = <<-SCRIPT
+set -x
+#
+yum install -y edb-migrationtoolkit
+#
+MTK_HOME="/usr/edb/migrationtoolkit/"
+echo MTK_HOME=$MTK_HOME
+#
+if [ ! -f ${MTK_HOME}etc/toolkit.properties.default ]
+then cp -v ${MTK_HOME}etc/toolkit.properties ${MTK_HOME}etc/toolkit.properties.default; fi
+cp -v /vagrant/toolkit.properties ${MTK_HOME}etc/toolkit.properties
+chmod go-rwx ${MTK_HOME}etc/toolkit.properties
+ls -l ${MTK_HOME}etc/toolkit.properties
+cat ${MTK_HOME}etc/toolkit.properties
+#
+if [ ! -f ${MTK_HOME}bin/runMTK.sh.default ]
+then cp -v ${MTK_HOME}bin/runMTK.sh ${MTK_HOME}bin/runMTK.sh.default; fi
+cp -v /vagrant/runMTK.sh ${MTK_HOME}bin/runMTK.sh
+sed 's/\r//g' -i ${MTK_HOME}bin/runMTK.sh # remove CR from sh file
+chmod go-rwx ${MTK_HOME}bin/runMTK.sh
+ls -l ${MTK_HOME}bin/runMTK.sh
+cat ${MTK_HOME}bin/runMTK.sh
+#
+chown -R vagrant:vagrant ${MTK_HOME}
+#
+# vagrant ssh
+# cd /usr/edb/migrationtoolkit/
+# bin/runMTK.sh SCOTT
+#
+SCRIPT
+  
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/centos-7.4"
+
+  config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
+  
+  config.vm.network "private_network", ip: IP_ADDRESS
+  
+  config.vm.hostname = HOST_NAME
+  
+  config.vm.synced_folder "../downloads/", "/vagrant/downloads/", create: true
+   
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "512"
+	vb.cpus = "1"
+	vb.name = HOST_NAME
+  end
+  
+  config.vm.provision "shell", path: "../common/avahi.sh"
+  config.vm.provision "shell", path: "../common/jdk8u162.sh"
+  config.vm.provision "shell", path: "../common/ojdbc7.sh"
+
+  config.vm.provision "shell", env: {
+    "EDB_YUM_USERNAME" => EDB_YUM_USERNAME,
+	"EDB_YUM_PASSWORD" => EDB_YUM_PASSWORD },
+  path: "../common/edbrepo.sh"
+
+  config.vm.provision "shell",
+  env: {
+	"IP_ADDRESS" => IP_ADDRESS,
+	"HOST_NAME" => HOST_NAME
+  }, inline: $script
+end
