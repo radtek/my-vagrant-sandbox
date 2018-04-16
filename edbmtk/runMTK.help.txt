@@ -1,0 +1,91 @@
+$ bin/runMTK.sh -help
+
+Running EnterpriseDB Migration Toolkit (Build 51.0.1) ...
+
+EnterpriseDB Migration Toolkit (Build 51.0.1)
+
+Usage: runMTK [-options] SCHEMA
+
+If no option is specified, the complete schema will be imported.
+
+where options include:
+-help           Display the application command-line usage.
+-version        Display the application version information.
+-verbose [on|off] Display application log messages on standard output (default: on).
+
+-schemaOnly     Import the schema object definitions only.
+-dataOnly       Import the table data only. When -tables is in place, it imports data only for the selected tables. Note: If there are any FK constraints defined on target tables, use -truncLoad option along with this option.
+
+-sourcedbtype db_type The -sourcedbtype option specifies the source database type. db_type may be one of the following values: mysql, oracle, sqlserver, sybase, postgresql, enterprisedb. db_type is case-insensitive. By default, db_type is oracle.
+-targetdbtype db_type The -targetdbtype option specifies the target database type. db_type may be one of the following values: oracle, sqlserver, postgresql, enterprisedb. db_type is case-insensitive. By default, db_type is enterprisedb.
+
+-allTables      Import all tables.
+-tables LIST    Import comma-separated list of tables.
+-constraints    Import the table constraints.
+-indexes        Import the table indexes.
+-triggers       Import the table triggers.
+-allViews       Import all Views.
+-views LIST     Import comma-separated list of Views.
+-allProcs       Import all stored procedures.
+-procs LIST     Import comma-separated list of stored procedures.
+-allFuncs       Import all functions.
+-funcs LIST     Import comma-separated list of functions.
+-allPackages    Import all packages.
+-packages LIST Import comma-separated list of packages.
+-allSequences   Import all sequences.
+-sequences LIST Import comma-separated list of sequences.
+-targetSchema NAME Name of the target schema (default: target schema is named after source schema).
+-allDBLinks     Import all Database Links.
+-allSynonyms    It enables the migration of all public and private synonyms from an Oracle database to an Advanced Server database.  If a synonym with the same name already exists in the target database, the existing synonym will be replaced with the migrated version.
+-allPublicSynonyms      It enables the migration of all public synonyms from an Oracle database to an Advanced Server database.  If a synonym with the same name already exists in the target database, the existing synonym will be replaced with the migrated version.
+-allPrivateSynonyms     It enables the migration of all private synonyms from an Oracle database to an Advanced Server database.  If a synonym with the same name already exists in the target database, the existing synonym will be replaced with the migrated version.
+-allQueues      Import all queues from the source database.
+-queues LIST    Import the selected queues from the source database. LIST is a comma-separated list of queue names.
+-skipUserSchemaCreation This option prevents implicit schema creation for a migrated Oracle user.
+
+-dropSchema [true|false] Drop the schema if it already exists in the target database (default: false).
+-truncLoad      It disables any constraints on target table and truncates the data from the table before importing new data. This option can only be used with -dataOnly.
+-safeMode       Transfer data in safe mode using plain SQL statements.
+-copyDelimiter  Specify a single character to be used as delimiter in copy command when loading table data. Default is \t
+-batchSize      Specify the Batch Size to be used by the bulk inserts. Valid values are  1-50000, default batch size is 1000, reduce if you run into Out of Memory exception
+-cpBatchSize     Specify the Batch Size in MB, to be used in the Copy Command. Valid value is from 1 to 1024, default batch size is 8 MB.
+-fetchSize       Specify fetch size in terms of number of rows should be fetched in result set at a time. This option can be used when tables contain millions of rows and you want to avoid out of memory errors.
+-filterProp     The properties file that contains table where clause.
+-skipFKConst    Skip migration of FK constraints.
+-skipCKConst    Skip migration of Check constraints.
+-ignoreCheckConstFilter By default MTK does not migrate Check constraints and Default clauses from Sybase, use this option to turn off this filter.
+-fastCopy       Bypass WAL logging to perform the COPY operation in an optimized way, default disabled.
+-customColTypeMapping LIST      Use custom type mapping represented by a semi-colon separated list, where each entry is specified using COL_NAME_REG_EXPR=TYPE pair. e.g. .*ID=INTEGER
+-customColTypeMappingFile PROP_FILE     The custom type mapping represented by a properties file, where each entry is specified using COL_NAME_REG_EXPR=TYPE pair. e.g. .*ID=INTEGER
+-offlineMigration [PATH] This performs offline migration and saves the DDL/DML scripts in files for a later execution. By default the script files will be saved under user home folder, if required follow -offlineMigration option with a custom path.
+-logDir LOG_PATH Specify a custom path to save the log file. By default, on Linux the logs will be saved under folder $HOME/.enterprisedb/migration-toolkit/logs. In case of Windows logs will be saved under folder %HOMEDRIVE%%HOMEPATH%\.enterprisedb\migration-toolkit\logs.
+-copyViaDBLinkOra This option can be used to copy data using dblink_ora COPY command. This option can only be used in Oracle to EnterpriseDB migration mode.
+-singleDataFile Use single SQL file for offline data storage for all tables. This option cannot be used in COPY format.
+-allUsers Import all users and roles from the source database.
+-users LIST Import the selected users/roles from the source database. LIST is a comma-separated list of user/role names e.g. -users MTK,SAMPLE
+-allProfiles Import all profiles from the source database.
+-profiles LIST Import the selected profiles from the source database. LIST is a comma-separated list of profile names e.g. -profiles USER_PROFILE,ADMIN_PROFILE
+-allRules Import all rules from the source database.
+-rules LIST Import the selected rules from the source database. LIST is a comma-separated list of rule names e.g. -rules high_sal_emp,low_sal_emp
+-allGroups Import all groups from the source database.
+-groups LIST Import the selected groups from the source database. LIST is a comma-separated list of group names e.g. -groups acct_emp,mkt_emp
+-allDomains Import all domain, enumeration and composite types from the source database.
+-domains LIST Import the selected domain, enumeration and composite types from the source database. LIST is a comma-separated list of domain names e.g. -domains d_email,d_dob, mood
+-objecttypes    Import the user-defined object types.
+-replaceNullChar <CHAR> If null character is part of a column value, the data migration fails over JDBC protocol. This option can be used to replace null character with a user-specified character.
+-importPartitionAsTable [LIST] Use this option to import Oracle Partitioned table as a normal table in EnterpriseDB. To apply the rule on a selected set of tables, follow the option by a comma-separated list of table names.
+-enableConstBeforeDataLoad Use this option to re-enable constraints (and triggers) before data load. This is useful in the scenario when the migrated table is mapped to a partition table in EnterpriseDB.
+-checkFunctionBodies [true|false] When set to false, it disables validation of the function body during function creation, this is to avoid errors if function contains forward references. Applicable when target database is Postgres/EnterpriseDB, default is true.
+-retryCount VALUE       Specify the number of re-attempts performed by MTK to migrate objects that failed due to cross-schema dependencies. The VALUE parameter should be greater than 0, default is 2.
+-analyze        It invokes ANALYZE operation against a target Postgres or Postgres Plus Advanced Server database. The ANALYZE collects statistics for the migrated tables that are utilized for efficient query plans.
+-vacuumAnalyze  It invokes VACUUM and ANALYZE operations against a target Postgres or Postgres Plus Advanced Server database. The VACUUM reclaims dead tuple storage whereas ANALYZE collects statistics for the migrated tables that are utilized for efficient query plans.
+-loaderCount VALUE      Specify the number of jobs (threads) to perform data load in parallel. The VALUE parameter should be greater than 0, default is 1.
+-logFileSize VALUE      It represents the maximum file size limit (in MB) before rotating to a new log file, defaults to 50MB.
+-logFileCount VALUE     It represents the number of files to maintain in log file rotation history, defaults to 20. Specify a value of zero to disable log file rotation.
+-useOraCase     It preserves the identifier case while migrating from Oracle, except for functions, procedures and packages unless identifier names are given in quotes.
+-logBadSQL      It saves the DDL scripts for the objects that fail to migrate, in a .sql file in log folder.
+-targetDBVersion        It represents the major.minor version of the target database. This option is applicable for offline migration mode and is used to validate certain migration options as per target db version [default is 10.0 for EnterpriseDB database].
+
+Database Connection Information:
+The application will read the connectivity information for the source and target database servers from toolkit.properties file.
+Refer to MTK readme document for more information.
