@@ -8,6 +8,17 @@ SSH_PORT=2210 # if possible, use port number equal to the last octet of the ip a
 EDB_YUM_USERNAME=ENV["EDB_YUM_USERNAME"]
 EDB_YUM_PASSWORD=ENV["EDB_YUM_PASSWORD"]
 
+if ( ARGV.include?("up") && ! ARGV.include?("--no-provision") ) ||
+   ( ARGV.include?("reload") && ARGV.include?("--provision") ) ||
+   ARGV.include?("provision")
+  variables = %w{EDB_YUM_USERNAME EDB_YUM_PASSWORD}
+  missing = variables.find_all { |v| ENV[v] == nil }
+  unless missing.empty?
+    puts "FATAL: The following variables are missing and are needed to run this script: #{missing.join(', ')}."
+    exit
+  end
+end
+
 $script = <<-SCRIPT
 set -x
 #
