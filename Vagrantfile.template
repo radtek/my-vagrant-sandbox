@@ -1,14 +1,15 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
-
+#
 HOST_NAME="!!!yourhostname!!!"
 IP_ADDRESS="192.168.100.!!!"
 SSH_PORT=22!! # if possible, use port number equal to the last octet of the ip adress (works for 0..99 only, of course)
-
+#
 $script = <<-SCRIPT
 set -x
 #
-yum install -y epel-release
+if [[ ! "$(rpm -q epel-release)" = "epel-release-"* ]]
+then yum install -y epel-release; fi
 #
 echo HOST_NAME=${HOST_NAME}
 echo IP_ADDRESS=${IP_ADDRESS}
@@ -16,27 +17,28 @@ echo IP_ADDRESS=${IP_ADDRESS}
 hostname
 hostname -I
 SCRIPT
-  
+# 
 Vagrant.configure("2") do |config|
   config.vm.box = "bento/centos-7.4"
-
+  #
   config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
-  
+  #
   config.vm.network "private_network", ip: IP_ADDRESS
-  
+  #
   config.vm.hostname = HOST_NAME
-  
+  #
   config.vm.provider "virtualbox" do |vb|
     vb.memory = "512"
 	vb.cpus = "2"
 	vb.name = HOST_NAME
   end
-  
+  #
   config.vm.provision "shell", path: "../common/avahi.sh"
-
+  #
   config.vm.provision "shell",
   env: {
 	"IP_ADDRESS" => IP_ADDRESS,
 	"HOST_NAME" => HOST_NAME
   }, inline: $script
+  #
 end
