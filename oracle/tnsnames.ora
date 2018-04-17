@@ -1,0 +1,17 @@
+orcl = (DESCRIPTION=
+         (CONNECT_DATA=
+           (SERVICE_NAME=orcl) )
+         (ADDRESS=
+           (PROTOCOL=TCP)
+           (HOST=oracle)
+           (PORT=1521) ) 
+       )
+
+bibd = (DESCRIPTION=
+         (CONNECT_DATA=
+           (SERVICE_NAME=bibd) )
+         (ADDRESS=
+           (PROTOCOL=TCP)
+           (HOST=oracle)
+           (PORT=1521) ) 
+       )
