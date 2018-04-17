@@ -1,0 +1,58 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+HOST_NAME="gitlab"
+IP_ADDRESS="192.168.100.13"
+SSH_PORT=2213
+#
+$script = <<-SCRIPT
+set -x
+#
+yum install -y curl policycoreutils-python openssh-server
+systemctl enable sshd
+systemctl start sshd
+if [ ! "$(systemctl is-active firewalld)" == "active" ]
+then systemctl start firewalld; fi
+systemctl enable firewalld
+firewall-cmd --permanent --add-service=http
+systemctl reload firewalld
+#
+yum install postfix
+systemctl enable postfix
+systemctl start postfix
+#
+curl -s https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.rpm.sh -o script.rpm.sh
+bash ./script.rpm.sh
+sudo EXTERNAL_URL="http://gitlab.local" yum install -y gitlab-ee
+#
+# modify /etc/hosts to recognize gitlab.local
+# go to http://gitlab.local and set password
+# login as "root" with that password
+#
+SCRIPT
+# 
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/centos-7.4"
+  #
+  config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 80, host: 8013, host_ip: "127.0.0.1"
+  #
+  config.vm.network "private_network", ip: IP_ADDRESS
+  #
+  config.vm.hostname = HOST_NAME
+  #
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "2048"
+	vb.cpus = "2"
+	vb.name = HOST_NAME
+  end
+  #
+  config.vm.provision "shell", path: "../common/avahi.sh"
+  #
+  config.vm.provision "shell",
+  env: {
+	"IP_ADDRESS" => IP_ADDRESS,
+	"HOST_NAME" => HOST_NAME
+  }, inline: $script
+  #
+end
