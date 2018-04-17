@@ -65,6 +65,7 @@ set -x
 sudo su - enterprisedb <<EOF
 psql -d edb -f /vagrant/scott.ddl
 psql -d edb -f /vagrant/hr.ddl
+psql -d edb -f /vagrant/gdwh.ddl
 psql -d edb -f /vagrant/gdwhint.ddl
 psql -d edb -f /vagrant/gdwhanlt.ddl
 EOF

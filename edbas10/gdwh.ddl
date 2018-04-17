@@ -1,0 +1,97 @@
+-- User: mtk_gdwh
+-- DROP USER mtk_gdwh;
+
+CREATE USER mtk_gdwh WITH
+  LOGIN
+  NOSUPERUSER
+  INHERIT
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION;
+
+COMMENT ON ROLE mtk_gdwh IS 'Enterprise DB Migration Toolkit user for Oracle schema GDWH';
+
+ALTER USER mtk_gdwh WITH PASSWORD 'passw0rt';
+
+-- needed for CREATE USER IDENTIFIED BY 'passw0rt';
+--ALTER USER mtk_gdwh WITH superuser;
+
+-- Database: mtk_gdwh_db
+
+-- DROP DATABASE mtk_gdwh_db;
+
+CREATE DATABASE mtk_gdwh_db
+    WITH 
+    OWNER = mtk_gdwh
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'en_US.UTF-8'
+    LC_CTYPE = 'en_US.UTF-8'
+    TABLESPACE = pg_default
+    CONNECTION LIMIT = -1;
+
+COMMENT ON DATABASE mtk_gdwh_db
+    IS 'EnterpriseDB Migration Toolkit database for Oracle schema GDWH';
+
+--
+
+CREATE USER gdwhint WITH
+  LOGIN
+  NOSUPERUSER
+  INHERIT
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION;
+
+COMMENT ON ROLE gdwhint IS 'Enterprise DB Migration Toolkit user for Oracle user GDWHINT';
+
+ALTER USER gdwhint WITH PASSWORD 'passw0rt';
+
+CREATE USER gdwhanlt WITH
+  LOGIN
+  NOSUPERUSER
+  INHERIT
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION;
+
+COMMENT ON ROLE gdwhanlt IS 'Enterprise DB Migration Toolkit user for Oracle user GDWHANLT';
+
+ALTER USER gdwhanlt WITH PASSWORD 'passw0rt';
+
+--
+
+CREATE USER gdwh_java_role WITH
+  LOGIN
+  NOSUPERUSER
+  INHERIT
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION;;
+CREATE USER gdwh_sas_owner  WITH
+  LOGIN
+  NOSUPERUSER
+  INHERIT
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION;
+CREATE USER gdwh_dna_role WITH
+  LOGIN
+  NOSUPERUSER
+  INHERIT
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION;;
+CREATE USER gdwhsas WITH
+  LOGIN
+  NOSUPERUSER
+  INHERIT
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION;
+CREATE USER gdwh_mstr_role WITH
+  LOGIN
+  NOSUPERUSER
+  INHERIT
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION;

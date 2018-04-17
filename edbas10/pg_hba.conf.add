@@ -16,6 +16,12 @@ host    mtk_gdwhint_db     mtk_gdwhint   127.0.0.1/32           md5
 host    mtk_gdwhint_db     mtk_gdwhint   198.168.100.10/32      md5
 host    mtk_gdwhint_db     mtk_gdwhint   198.168.100.11/32      md5
 
+host    mtk_gdwh_db        mtk_gdwh      ::1/128                md5
+host    mtk_gdwh_db        mtk_gdwh      127.0.0.1/32           md5
+host    mtk_gdwh_db        mtk_gdwh      10.0.2.2/32            md5
+host    mtk_gdwh_db        mtk_gdwh      192.168.100.1/32       md5
+host    mtk_gdwh_db        mtk_gdwh      192.168.100.10/32      md5
+host    mtk_gdwh_db        mtk_gdwh      192.168.100.11/32      md5
 host    mtk_gdwhanlt_db    mtk_gdwhanlt  10.0.2.2/32            md5
 host    mtk_gdwhanlt_db    mtk_gdwhanlt  127.0.0.1/32           md5
 host    mtk_gdwhanlt_db    mtk_gdwhanlt  198.168.100.10/32      md5
