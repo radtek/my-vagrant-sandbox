@@ -13,7 +13,7 @@ yum install -y unzip
 # wget https://download.elastic.co/demos/kibana/gettingstarted/accounts.zip
 if [[ ! -f accounts.zip && ! -f accounts.json ]]
 then cp /vagrant/downloads/accounts.zip .; fi
-if [[ -f accouns.zip && ! -f accounts.json ]]
+if [[ -f accounts.zip && ! -f accounts.json ]]
 then unzip accounts.zip; fi
 #
 # wget https://download.elastic.co/demos/kibana/gettingstarted/logs.jsonl.gz
