@@ -1,0 +1,57 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+HOST_NAME="elk"
+IP_ADDRESS="192.168.100.14"
+SSH_PORT=2214
+#
+$script = <<-SCRIPT
+set -x
+#
+curl -s -X GET "http://localhost:9200/"
+curl -I -s -X GET "http://localhost:5601/"
+curl -I -s -X GET "http://localhost:5601/app/kibana"
+#
+SCRIPT
+# 
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/centos-7.4"
+  #
+  config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
+  #
+  config.vm.network "forwarded_port", guest: 9200, host: 9200, host_ip: "127.0.0.1" # elasticsearch
+  config.vm.network "forwarded_port", guest: 5601, host: 5601, host_ip: "127.0.0.1" # kibana
+  #
+  config.vm.network "private_network", ip: IP_ADDRESS
+  #
+  config.vm.synced_folder "../downloads/", "/vagrant/downloads/", create: true
+  #
+  config.vm.hostname = HOST_NAME
+  #
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "2048"
+	vb.cpus = "2"
+	vb.name = HOST_NAME
+  end
+  #
+  #config.vm.provision "shell", path: "../common/avahi.sh"
+  #
+  # https://www.elastic.co/guide/en/elastic-stack/current/installing-elastic-stack.html
+  #  
+  #config.vm.provision "shell", path: "../common/jdk8u162.sh"
+  #
+  #config.vm.provision "shell", path: "elasticsearch.sh"
+  #config.vm.provision "shell", path: "kibana.sh"
+  #config.vm.provision "shell", path: "logstash.sh"
+  #config.vm.provision "shell", path: "filebeat.sh"
+  #
+  config.vm.provision "shell", path: "sample_data.sh"
+  #
+  config.vm.provision "shell",
+  env: {
+	"IP_ADDRESS" => IP_ADDRESS,
+	"HOST_NAME" => HOST_NAME
+  }, inline: $script
+  #
+end
+#
