@@ -38,7 +38,7 @@ Vagrant.configure("2") do |config|
   #
   # https://www.elastic.co/guide/en/elastic-stack/current/installing-elastic-stack.html
   #
-  config.vm.provision "shell", path: "../common/jdk8u162.sh"
+  config.vm.provision "shell", path: "../common/jdk8.sh"
   #
   config.vm.provision "shell", path: "elasticsearch.sh"
   config.vm.provision "shell", path: "kibana.sh"
