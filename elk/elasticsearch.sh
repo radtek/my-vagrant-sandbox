@@ -2,7 +2,7 @@ set -x
 #
 rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
 #
-# wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-6.2.4.rpm
+# wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-6.2.4.rpm -O elasticsearch-6.2.4.rpm
 if [ ! -f elasticsearch-6.2.4.rpm ]
 then cp -v /vagrant/downloads/elasticsearch-6.2.4.rpm .; fi
 #

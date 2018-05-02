@@ -2,7 +2,7 @@ set -x
 #
 rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
 #
-# wget https://artifacts.elastic.co/downloads/kibana/kibana-6.2.4-x86_64.rpm
+# wget https://artifacts.elastic.co/downloads/kibana/kibana-6.2.4-x86_64.rpm -O kibana-6.2.4-x86_64.rpm
 if [ ! -f kibana-6.2.4-x86_64.rpm ]
 then cp -v /vagrant/downloads/kibana-6.2.4-x86_64.rpm .; fi
 #
