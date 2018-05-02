@@ -21,7 +21,7 @@ if [ ! -f jdk-8u171-linux-x64.rpm ]; then exit 1; fi
 yum localinstall -y jdk-8u171-linux-x64.rpm
 
 echo '
-export JAVA_HOME="/usr/java/jdk1.8.0_171/jre"
+export JAVA_HOME="/usr/java/jdk1.8.0_171-amd64/jre"
 export PATH=$JAVA_HOME/bin:$PATH
 ' | tee -a /etc/profile
 
