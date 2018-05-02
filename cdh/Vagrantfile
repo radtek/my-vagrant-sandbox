@@ -1,0 +1,52 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+HOST_NAME="cdh"
+IP_ADDRESS="192.168.100.55"
+SSH_PORT=2255
+#
+$script = <<-SCRIPT
+set -x
+#
+if [[ ! "$(rpm -q epel-release)" = "epel-release-"* ]]
+then yum install -y epel-release; fi
+#
+echo HOST_NAME=${HOST_NAME}
+echo IP_ADDRESS=${IP_ADDRESS}
+#
+hostname
+hostname -I
+SCRIPT
+# 
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/centos-7.4"
+  #
+  config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
+  #
+  config.vm.network "forwarded_port", guest: 7180, host: 7180, host_ip: "127.0.0.1"
+  #
+  config.vm.network "private_network", ip: IP_ADDRESS
+  #
+  config.vm.hostname = HOST_NAME
+  #
+  config.vm.synced_folder "../downloads/", "/vagrant/downloads/", create: true
+  #
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "12288"
+	vb.cpus = "2"
+	vb.name = HOST_NAME
+  end
+  #
+  config.vm.provision "shell", path: "../common/avahi.sh"
+  #
+  config.vm.provision "shell", path: "../common/jdk8.sh"
+  #
+  config.vm.provision "shell", path: "cloudera-manager.sh"
+  #
+  config.vm.provision "shell",
+  env: {
+	"IP_ADDRESS" => IP_ADDRESS,
+	"HOST_NAME" => HOST_NAME
+  }, inline: $script
+  #
+end
