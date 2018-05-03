@@ -1,0 +1,85 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+HOST_NAME="elm"
+IP_ADDRESS="192.168.100.17"
+SSH_PORT=2217
+#
+$script = <<-SCRIPT
+set -x
+#
+if [[ ! "$(rpm -q epel-release)" = "epel-release-"* ]]
+then yum install -y epel-release; fi
+#
+# installs old version v6.14.0
+# if [[ ! "$(rpm -q nodejs)" = "nodejs-"* ]]
+# then sudo yum install -y nodejs; fi
+# node --version
+# exit
+#
+# using nvm
+# https://www.digitalocean.com/community/tutorials/how-to-install-node-js-on-a-centos-7-server
+curl --silent https://raw.githubusercontent.com/creationix/nvm/v0.13.1/install.sh -o install.sh
+bash install.sh
+source ~/.bash_profile
+nvm list-remote | head
+nvm install v8.11.1
+nvm list
+nvm use v8.11.1
+nvm alias default v8.11.1
+node --version
+#
+npm install gulp-cli -g
+npm install gulp -D
+touch gulpfile.js
+gulp --help
+#
+#npm -g install npm@latest
+#
+npm install -g elm
+#
+cp -v /vagrant/elm-package.json .
+elm package install
+#
+cp -v /vagrant/package.json .
+npm install
+#
+cp -v /vagrant/gulpfile.js .
+gulp
+#
+cd
+mkdir ~/dist/
+mkdir ~/src/
+cp -v /vagrant/index.html ~/src/
+cp -v /vagrant/styles.css ~/src/
+cp -v /vagrant/Main.js ~/src/
+#
+# http://localhost:3000
+#
+SCRIPT
+# 
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/centos-7.4"
+  #
+  config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 3000, host: 3000, host_ip: "127.0.0.1"
+  #
+  config.vm.network "private_network", ip: IP_ADDRESS
+  #
+  config.vm.hostname = HOST_NAME
+  #
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "2048"
+	vb.cpus = "2"
+	vb.name = HOST_NAME
+  end
+  #
+  config.vm.provision "shell", path: "../common/avahi.sh"
+  #
+  config.vm.provision "shell",
+  env: {
+	"IP_ADDRESS" => IP_ADDRESS,
+	"HOST_NAME" => HOST_NAME
+  }, inline: $script
+  #
+end
