@@ -45,16 +45,27 @@ cp -v /vagrant/package.json .
 npm install
 #
 cp -v /vagrant/gulpfile.js .
-gulp
+gulp &
+#
+# https://auth0.com/blog/creating-your-first-elm-app-part-1/
 #
 cd
 mkdir ~/dist/
 mkdir ~/src/
-cp -v /vagrant/index.html ~/src/
-cp -v /vagrant/styles.css ~/src/
-cp -v /vagrant/Main.js ~/src/
+ln -s /vagrant/index.html src/index.html
+ln -s /vagrant/styles.css src/styles.css
+ln -s /vagrant/Main.elm ~/src/Main.elm
 #
 # http://localhost:3000
+#
+# API
+yum install -y git
+git clone https://github.com/auth0-blog/nodejs-jwt-authentication-sample.git
+cd nodejs-jwt-authentication-sample/
+npm install
+node server.js &
+#
+# curl localhost:3001/api/random-quote
 #
 SCRIPT
 # 
@@ -63,6 +74,7 @@ Vagrant.configure("2") do |config|
   #
   config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
   config.vm.network "forwarded_port", guest: 3000, host: 3000, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 3001, host: 3001, host_ip: "127.0.0.1"
   #
   config.vm.network "private_network", ip: IP_ADDRESS
   #
