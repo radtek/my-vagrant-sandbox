@@ -1,0 +1,91 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+HOST_NAME="graphite"
+IP_ADDRESS="192.168.100.34"
+SSH_PORT=2234
+#
+$script = <<-SCRIPT
+set -x
+#
+apt-get -q update
+#
+apt-get install -y -q python-virtualenv
+#
+python --version #Python 2.7.6
+pip --version #pip 1.5.4 from /home/vagrant/graphite.venv/local/lib/python2.7/site-packages (python 2.7)
+virtualenv --version #1.11.4
+#
+# https://graphite.readthedocs.io/en/latest/install-pip.html
+apt-get install -y -q python-dev libcairo2-dev libffi-dev build-essential
+#
+virtualenv /opt/graphite
+cd /opt/graphite
+source bin/activate
+#
+export PYTHONPATH="/opt/graphite/lib/:/opt/graphite/webapp/"
+pip install https://github.com/graphite-project/whisper/tarball/master
+pip install https://github.com/graphite-project/carbon/tarball/master
+pip install https://github.com/graphite-project/graphite-web/tarball/master
+#
+/*
+(graphite)root@graphite:/opt/graphite# pip install https://github.com/graphite-project/graphite-web/tarball/master
+Downloading/unpacking https://github.com/graphite-project/graphite-web/tarball/master
+  Downloading master (1.4MB): 1.4MB downloaded
+  Running setup.py (path:/tmp/pip-jS0Su4-build/setup.py) egg_info for package from https://github.com/graphite-project/graphite-web/tarball/master
+
+    warning: no files found matching '*' under directory 'distro/'
+    warning: no files found matching '*.html' under directory 'webapp/graphite/'
+    warning: no files found matching '*' under directory 'webapp/content/'
+    warning: no previously-included files found matching 'webapp/graphite/local_settings.py'
+    warning: no previously-included files found matching 'conf/*.conf'
+Downloading/unpacking Django>=1.8,<2.1 (from graphite-web==1.2.0)
+  Downloading Django-2.0.5.tar.gz (8.0MB): 8.0MB downloaded
+Cleaning up...
+Exception:
+Traceback (most recent call last):
+  File "/opt/graphite/local/lib/python2.7/site-packages/pip/basecommand.py", line 122, in main
+    status = self.run(options, args)
+  File "/opt/graphite/local/lib/python2.7/site-packages/pip/commands/install.py", line 278, in run
+    requirement_set.prepare_files(finder, force_root_egg_info=self.bundle, bundle=self.bundle)
+  File "/opt/graphite/local/lib/python2.7/site-packages/pip/req.py", line 1197, in prepare_files
+    do_download,
+  File "/opt/graphite/local/lib/python2.7/site-packages/pip/req.py", line 1375, in unpack_url
+    self.session,
+  File "/opt/graphite/local/lib/python2.7/site-packages/pip/download.py", line 582, in unpack_http_url
+    unpack_file(temp_location, location, content_type, link)
+  File "/opt/graphite/local/lib/python2.7/site-packages/pip/util.py", line 625, in unpack_file
+    untar_file(filename, location)
+  File "/opt/graphite/local/lib/python2.7/site-packages/pip/util.py", line 556, in untar_file
+    path = os.path.join(location, fn)
+  File "/opt/graphite/lib/python2.7/posixpath.py", line 80, in join
+    path += '/' + b
+UnicodeDecodeError: 'ascii' codec can't decode byte 0xe2 in position 47: ordinal not in range(128)
+
+Storing debug log for failure in /root/.pip/pip.log
+
+*/
+SCRIPT
+# 
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/trusty64"
+  #
+  config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
+  #
+  config.vm.network "private_network", ip: IP_ADDRESS
+  #
+  config.vm.hostname = HOST_NAME
+  #
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "2048"
+	vb.cpus = "2"
+	vb.name = HOST_NAME
+  end
+  #
+  config.vm.provision "shell",
+  env: {
+	"IP_ADDRESS" => IP_ADDRESS,
+	"HOST_NAME" => HOST_NAME
+  }, inline: $script
+  #
+end
