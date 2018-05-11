@@ -10,67 +10,77 @@ set -x
 #
 apt-get -q update
 #
-apt-get install -y -q python-virtualenv
+# https://www.digitalocean.com/community/tutorials/how-to-install-and-use-graphite-on-an-ubuntu-14-04-server
+apt-get install -y -q graphite-web graphite-carbon
+apt-get install postgresql libpq-dev python-psycopg2
 #
-python --version #Python 2.7.6
-pip --version #pip 1.5.4 from /home/vagrant/graphite.venv/local/lib/python2.7/site-packages (python 2.7)
-virtualenv --version #1.11.4
+sudo -u postgres psql <<SQL
+CREATE USER graphite WITH PASSWORD 'passw0rt';
+CREATE DATABASE graphite WITH OWNER graphite;
+SQL
 #
-# https://graphite.readthedocs.io/en/latest/install-pip.html
-apt-get install -y -q python-dev libcairo2-dev libffi-dev build-essential
+#SECRET_KEY = 'UNSAFE_DEFAULT'
+if [ $(grep '^SECRET_KEY' /etc/graphite/local_settings.py | wc -l) -eq 0 ]
+then echo "SECRET_KEY = '"$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64 ; echo '')"'" | sudo tee -a /etc/graphite/local_settings.py; fi
+#TIME_ZONE = 'America/Los_Angeles'
+if [ $(grep '^TIME_ZONE' /etc/graphite/local_settings.py | wc -l) -eq 0 ]
+then echo "TIME_ZONE = 'Europe/Berlin'" | sudo tee -a /etc/graphite/local_settings.py; fi
+#USE_REMOTE_USER_AUTHENTICATION = True
+sed 's/#USE_REMOTE_USER_AUTHENTICATION = True/USE_REMOTE_USER_AUTHENTICATION = True/' -i /etc/graphite/local_settings.py
+#DATABASES ...
+sed "s|'NAME': '/var/lib/graphite/graphite.db',|'NAME': 'graphite',|" -i /etc/graphite/local_settings.py
+sed "s|'ENGINE': 'django.db.backends.sqlite3',|'ENGINE': 'django.db.backends.postgresql_psycopg2',|" -i /etc/graphite/local_settings.py
+sed "s|'USER': '',|'USER': 'graphite',|" -i /etc/graphite/local_settings.py
+sed "s|'PASSWORD': '',|'PASSWORD': 'passw0rt',|" -i /etc/graphite/local_settings.py
+sed "s|'HOST': '',|'HOST': 'localhost',|" -i /etc/graphite/local_settings.py
+sed "s|'PORT': '',|'PORT': '',|" -i /etc/graphite/local_settings.py
 #
-virtualenv /opt/graphite
-cd /opt/graphite
-source bin/activate
+graphite-manage syncdb ## !!! requires manual input !!! see below
+# You just installed Django's auth system, which means you don't have any superusers defined.
+# Would you like to create one now? (yes/no): no
 #
-export PYTHONPATH="/opt/graphite/lib/:/opt/graphite/webapp/"
-pip install https://github.com/graphite-project/whisper/tarball/master
-pip install https://github.com/graphite-project/carbon/tarball/master
-pip install https://github.com/graphite-project/graphite-web/tarball/master
+sed 's/CARBON_CACHE_ENABLED=false/CARBON_CACHE_ENABLED=true/' -i /etc/default/graphite-carbon
+sed 's/ENABLE_LOGROTATION = False/ENABLE_LOGROTATION = True/' -i /etc/carbon/carbon.conf
 #
-/*
-(graphite)root@graphite:/opt/graphite# pip install https://github.com/graphite-project/graphite-web/tarball/master
-Downloading/unpacking https://github.com/graphite-project/graphite-web/tarball/master
-  Downloading master (1.4MB): 1.4MB downloaded
-  Running setup.py (path:/tmp/pip-jS0Su4-build/setup.py) egg_info for package from https://github.com/graphite-project/graphite-web/tarball/master
+echo "[carbon]
+pattern = ^carbon\.
+retentions = 60:90d
 
-    warning: no files found matching '*' under directory 'distro/'
-    warning: no files found matching '*.html' under directory 'webapp/graphite/'
-    warning: no files found matching '*' under directory 'webapp/content/'
-    warning: no previously-included files found matching 'webapp/graphite/local_settings.py'
-    warning: no previously-included files found matching 'conf/*.conf'
-Downloading/unpacking Django>=1.8,<2.1 (from graphite-web==1.2.0)
-  Downloading Django-2.0.5.tar.gz (8.0MB): 8.0MB downloaded
-Cleaning up...
-Exception:
-Traceback (most recent call last):
-  File "/opt/graphite/local/lib/python2.7/site-packages/pip/basecommand.py", line 122, in main
-    status = self.run(options, args)
-  File "/opt/graphite/local/lib/python2.7/site-packages/pip/commands/install.py", line 278, in run
-    requirement_set.prepare_files(finder, force_root_egg_info=self.bundle, bundle=self.bundle)
-  File "/opt/graphite/local/lib/python2.7/site-packages/pip/req.py", line 1197, in prepare_files
-    do_download,
-  File "/opt/graphite/local/lib/python2.7/site-packages/pip/req.py", line 1375, in unpack_url
-    self.session,
-  File "/opt/graphite/local/lib/python2.7/site-packages/pip/download.py", line 582, in unpack_http_url
-    unpack_file(temp_location, location, content_type, link)
-  File "/opt/graphite/local/lib/python2.7/site-packages/pip/util.py", line 625, in unpack_file
-    untar_file(filename, location)
-  File "/opt/graphite/local/lib/python2.7/site-packages/pip/util.py", line 556, in untar_file
-    path = os.path.join(location, fn)
-  File "/opt/graphite/lib/python2.7/posixpath.py", line 80, in join
-    path += '/' + b
-UnicodeDecodeError: 'ascii' codec can't decode byte 0xe2 in position 47: ordinal not in range(128)
+[test]
+pattern = ^test\.
+retentions = 10s:10m,1m:1h,10m:1d
 
-Storing debug log for failure in /root/.pip/pip.log
-
-*/
+[default_1min_for_1day]
+pattern = .*
+retentions = 60s:1d
+" |
+  sudo tee /etc/carbon/storage-schemas.conf
+#
+cp -v /usr/share/doc/graphite-carbon/examples/storage-aggregation.conf.example /etc/carbon/storage-aggregation.conf
+#
+#  UsageError("Unknown command: %s" % sub)
+mv -v /usr/local/lib/python2.7/dist-packages/twisted /usr/local/lib/python2.7/dist-packages/twisted2
+#
+service carbon-cache start
+#
+apt-get install -y -q apache2 libapache2-mod-wsgi
+#
+a2dissite 000-default
+cp -v /usr/share/graphite-web/apache2-graphite.conf /etc/apache2/sites-available
+a2ensite apache2-graphite
+service apache2 reload
+#
+echo "test.count 42 `date +%s`" | nc -q0 127.0.0.1 2003
+#
+# http://localhost:8088
+#
 SCRIPT
 # 
 Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/trusty64"
   #
   config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 80, host: 8088, host_ip: "127.0.0.1"
   #
   config.vm.network "private_network", ip: IP_ADDRESS
   #
