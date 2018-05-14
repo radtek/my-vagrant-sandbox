@@ -47,6 +47,14 @@ curl -s localhost:80/info.php
 #
 # http://localhost:8036/info.php
 #
+# https://www.adminer.org/#download
+wget https://github.com/vrana/adminer/releases/download/v4.6.2/adminer-4.6.2.php -O adminer-4.6.2.php
+cp -v adminer-4.6.2.php /usr/share/nginx/html/
+#
+curl http://localhost:80/adminer-4.6.2.php
+#
+# http://localhost:8036/adminer-4.6.2.php
+#
 SCRIPT
 # 
 Vagrant.configure("2") do |config|
