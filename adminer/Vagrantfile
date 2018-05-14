@@ -1,0 +1,76 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+HOST_NAME="adminer"
+IP_ADDRESS="192.168.100.36"
+SSH_PORT=2236
+#
+$script = <<-SCRIPT
+set -x
+#
+# https://www.adminer.org/de/
+#
+apt-get -y -qq update
+#
+apt-get install -y -qq nginx
+#
+curl localhost:80
+#
+apt-get install -y -qq php5-fpm
+#
+if [ ! -f /etc/nginx/nginx.conf.default ]
+then cp -v /etc/nginx/nginx.conf /etc/nginx/nginx.conf.default; fi
+cp -v /vagrant/nginx.conf /etc/nginx/nginx.conf
+diff /etc/nginx/nginx.conf.default /etc/nginx/nginx.conf
+#
+if [ ! -f /etc/nginx/sites-available/default.default ]
+then cp -v /etc/nginx/sites-available/default /etc/nginx/sites-available/default.default; fi
+cp -v /vagrant/nginx.default /etc/nginx/sites-available/default
+diff /etc/nginx/sites-available/default.default /etc/nginx/sites-available/default
+#
+if [ ! -f /etc/php5/fpm/php.ini.default ]
+then cp -v /etc/php5/fpm/php.ini /etc/php5/fpm/php.ini.default; fi
+cp -v /vagrant/php.ini /etc/php5/fpm/php.ini.default
+diff /etc/php5/fpm/php.ini.default /etc/php5/fpm/php.ini
+#
+nginx -t
+service nginx reload
+#
+service php5-fpm reload
+#
+chown www-data:www-data -R /usr/share/nginx/html
+#
+cp -v /vagrant/info.php /usr/share/nginx/html/info.php
+chown www-data:www-data /usr/share/nginx/html/info.php
+#
+curl -s localhost:80/info.php
+#
+# http://localhost:8036/info.php
+#
+SCRIPT
+# 
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/trusty64"
+  #
+  config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 80, host: 8036, host_ip: "127.0.0.1"
+  #
+  config.vm.network "private_network", ip: IP_ADDRESS
+  #
+  config.vm.hostname = HOST_NAME
+  #
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+	vb.cpus = "2"
+	vb.name = HOST_NAME
+  end
+  #
+  #config.vm.provision "shell", path: "../common/avahi.sh"
+  #
+  config.vm.provision "shell",
+  env: {
+	"IP_ADDRESS" => IP_ADDRESS,
+	"HOST_NAME" => HOST_NAME
+  }, inline: $script
+  #
+end
