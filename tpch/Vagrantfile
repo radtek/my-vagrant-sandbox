@@ -1,0 +1,59 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/trusty64"
+  config.vm.box_version = "14.04"
+  config.vm.hostname = "tpch"
+
+  config.vm.provider "virtualbox" do |vb|
+     vb.name = "tpch"
+     vb.memory = "1024"
+  end
+  
+  config.vm.provision "shell", privileged:false, inline: <<-SHELL
+    set -x
+    sudo apt-get update
+    sudo apt-get install -y git unzip python-pip python-virtualenv
+    gcc --version
+    python --version
+    python3 --version
+    #
+    sudo apt-get install -y postgresql postgresql-contrib
+    #
+    git config --global user.email "slavong99@gmail.com"
+    git config --global user.name "Slavo Ng"
+    #git clone https://github.com/Data-Science-Platform/tpch-pgsql.git
+    git clone https://github.com/slavong/tpch-pgsql.git
+    cd tpch-pgsql/
+    #
+    wget -q https://github.com/electrum/tpch-dbgen/archive/32f1c1b92d1664dba542e927d23d86ffa57aa253.zip -O tpch-dbgen.zip
+    unzip tpch-dbgen.zip && mv tpch-dbgen-32f1c1b92d1664dba542e927d23d86ffa57aa253 tpch-dbgen && rm tpch-dbgen.zip
+    #
+    sudo apt-get install -y python3-dev libpq-dev
+    pg_config --version
+    #
+    virtualenv -p python3 my.venv
+    cd my.venv/
+    source bin/activate
+    cd ..
+    #
+    # echo "psycopg2" | tee requirements.txt
+    pip install -r requirements.txt
+    #
+    ./benchmark prepare
+    #
+    sudo -u postgres createuser tpch
+    sudo -u postgres createdb tpchdb
+    #
+    sudo -u postgres psql <<PSQL
+ALTER USER tpch WITH ENCRYPTED PASSWORD 'pa55-w0rt!';
+GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;
+\l
+\q
+PSQL
+    #
+    ./benchmark --user tpch --database tpchdb --password 'pa55-w0rt!'  load 
+    #
+  SHELL
+end
