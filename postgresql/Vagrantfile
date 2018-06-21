@@ -1,0 +1,49 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+HOST_NAME="postgresql"
+IP_ADDRESS="192.168.100.32"
+SSH_PORT=2232
+#
+$script = <<-SCRIPT
+set -x
+sudo apt-get -qq update
+#
+sudo apt-get install --yes postgresql
+#
+psql --version
+#
+sudo -u postgres psql <<PSQL
+\l
+\q
+PSQL 
+#
+sudo sed "s/listen_addresses = 'localhost'/listen_addresses = '*'/g" -i /etc/postgresql/9.3/main/postgresql.conf
+#
+echo '
+host    all            all              10.0.2.2/32            md5
+' | sudo tee -a /etc/postgresql/9.3/main/pg_hba.conf
+#
+sudo service postgresql restart
+#
+SCRIPT
+# 
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-14.04"
+  #
+  config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 5432, host: 5432, host_ip: "127.0.0.1"
+  #
+  config.vm.network "private_network", ip: IP_ADDRESS
+  #
+  config.vm.hostname = HOST_NAME
+  #
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "2018"
+	vb.cpus = "2"
+	vb.name = HOST_NAME
+  end
+  #
+  config.vm.provision "shell", privileged: false, inline: $script
+  #
+end

@@ -53,7 +53,7 @@ GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;
 \q
 PSQL
     #
-    ./benchmark --user tpch --database tpchdb --password 'pa55-w0rt!'  load 
+    ./benchmark.py --user tpch --database tpchdb --password 'pa55-w0rt!'  load 
     #
   SHELL
 end
