@@ -7,22 +7,24 @@ SSH_PORT=2232
 #
 $script = <<-SCRIPT
 set -x
-sudo apt-get -qq update
+if [ -z "$(find /var/cache/apt/pkgcache.bin -mmin -60)" ]; then sudo apt-get -qq update; fi
 #
 sudo apt-get install --yes postgresql
 #
 psql --version
 #
-sudo -u postgres psql <<PSQL
-\l
-\q
-PSQL 
+sudo -u postgres psql --command "\\l"
 #
-sudo sed "s/listen_addresses = 'localhost'/listen_addresses = '*'/g" -i /etc/postgresql/9.3/main/postgresql.conf
+sudo grep 'listen_addresses = ' /etc/postgresql/9.3/main/postgresql.conf
+sudo sed "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" -i /etc/postgresql/9.3/main/postgresql.conf
+sudo grep 'listen_addresses = ' /etc/postgresql/9.3/main/postgresql.conf
 #
+sudo tail /etc/postgresql/9.3/main/pg_hba.conf
+sudo grep -q 'host.*all.*all.*10.0.2.2/32.*md5' /etc/postgresql/9.3/main/pg_hba.conf || \
 echo '
 host    all            all              10.0.2.2/32            md5
 ' | sudo tee -a /etc/postgresql/9.3/main/pg_hba.conf
+sudo tail /etc/postgresql/9.3/main/pg_hba.conf
 #
 sudo service postgresql restart
 #
