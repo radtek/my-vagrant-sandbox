@@ -1,0 +1,84 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+HOST_NAME="postgis"
+IP_ADDRESS="192.168.100.33"
+SSH_PORT=2233
+#
+$script = <<-SCRIPT
+set -x
+#
+sudo apt-get install --yes software-properties-common 
+sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -sc)-pgdg main"
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+#
+#if [ -z "$(find /var/cache/apt/pkgcache.bin -mmin -60)" ]; then 
+sudo apt-get -qq update
+#; fi
+#
+sudo apt-get install --yes -qq postgresql-9.6
+exit
+# http://trac.osgeo.org/postgis/wiki/UsersWikiPostGIS23UbuntuPGSQL96Apt
+sudo apt-get install --yes -qq postgresql-9.6-postgis-2.3
+sudo apt-get install --yes -qq postgresql-9.6-postgis-scripts
+sudo apt-get install --yes -qq postgresql-contrib-9.6
+#to get the commandline tools shp2pgsql, raster2pgsql you need to do this
+#sudo apt-get install --yes -qq postgis # installs postgresql-10 !!!
+sudo apt-get install --yes -qq postgis-2.3
+#
+sudo apt-get install --yes -qq postgresql-9.6-pgrouting
+#
+psql --version
+#
+sudo -u postgres psql --command "\\l"
+#
+sudo -u postgres psql <<PSQL
+CREATE DATABASE gisdb;
+\\connect gisdb;
+CREATE SCHEMA postgis;
+ALTER DATABASE gisdb SET search_path=public, postgis, contrib;
+\\connect gisdb;
+CREATE EXTENSION postgis SCHEMA postgis;
+SELECT postgis_full_version();
+--CREATE EXTENSION postgis_sfcgal SCHEMA postgis;
+-- getting ERROR:  could not open extension control file "/usr/share/postgresql/9.6/extension/postgis_sfcgal.control": No such file or directory
+--SELECT postgis_full_version();
+CREATE  EXTENSION pgrouting SCHEMA postgis;
+SELECT * FROM pgr_version();
+\\q
+PSQL
+#
+sudo grep 'listen_addresses = ' /etc/postgresql/9.6/main/postgresql.conf
+sudo sed "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" -i /etc/postgresql/9.6/main/postgresql.conf
+sudo grep 'listen_addresses = ' /etc/postgresql/9.6/main/postgresql.conf
+#
+sudo tail /etc/postgresql/9.6/main/pg_hba.conf
+sudo grep -q 'hostssl .*all .*all .*10.0.2.2/32 .*md5' /etc/postgresql/9.6/main/pg_hba.conf || \
+echo '
+hostssl    all            all              10.0.2.2/32            md5
+' | sudo tee -a /etc/postgresql/9.6/main/pg_hba.conf
+sudo tail /etc/postgresql/9.6/main/pg_hba.conf
+#
+sudo service postgresql restart
+#
+SCRIPT
+# 
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-14.04"
+  #
+  config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 5432, host: 5433, host_ip: "127.0.0.1"
+  #
+  config.vm.network "private_network", ip: IP_ADDRESS
+  #
+  config.vm.hostname = HOST_NAME
+  #
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "2018"
+	vb.cpus = "2"
+	vb.name = HOST_NAME
+  end
+  #
+  config.vm.provision "shell", privileged: false, inline: $script
+  #
+end
