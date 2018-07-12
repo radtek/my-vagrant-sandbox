@@ -5,10 +5,21 @@ HOST_NAME="postgis"
 IP_ADDRESS="192.168.100.33"
 SSH_PORT=2233
 #
-$script = <<-SCRIPT
+POSTGRESQL_VERSION="9.6"
+POSTGIS_VERSION="2.4.4"
+GEOS_VERSION="3.6.2"
+GDAL_VERSION="2.3.1"
+PROJ_VERSION="4.9.3"
+CGAL_VERSION="4.6.3"
+SFCGAL_VERSION="1.3.0"
+#
+PROCESSOR_COUNT="2"
+#
+$add_repo = <<-SCRIPT
 set -x
 #
-sudo apt-get install --yes software-properties-common 
+# add postgresql official repository to apt
+sudo apt-get install --yes -qq software-properties-common
 sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -sc)-pgdg main"
 wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
 #
@@ -16,23 +27,123 @@ wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-
 sudo apt-get -qq update
 #; fi
 #
-sudo apt-get install --yes -qq postgresql-9.6
-exit
-# http://trac.osgeo.org/postgis/wiki/UsersWikiPostGIS23UbuntuPGSQL96Apt
-sudo apt-get install --yes -qq postgresql-9.6-postgis-2.3
-sudo apt-get install --yes -qq postgresql-9.6-postgis-scripts
-sudo apt-get install --yes -qq postgresql-contrib-9.6
-#to get the commandline tools shp2pgsql, raster2pgsql you need to do this
-#sudo apt-get install --yes -qq postgis # installs postgresql-10 !!!
-sudo apt-get install --yes -qq postgis-2.3
-#
-sudo apt-get install --yes -qq postgresql-9.6-pgrouting
-#
-psql --version
-#
-sudo -u postgres psql --command "\\l"
-#
+SCRIPT
+
+# https://gist.github.com/aserafin/fe367c743ddb4ef2ec45
+# https://github.com/ericdfournier/postgis-sfcgal/blob/master/Dockerfile
+
+$install_required_packages = <<-SCRIPT
+set -x
+# install required libraries
+sudo apt-get install --yes -qq autoconf build-essential cmake \
+  docbook-mathml docbook-xsl \
+  libboost-dev libboost-thread-dev libboost-filesystem-dev libboost-system-dev libboost-iostreams-dev libboost-program-options-dev libboost-timer-dev \
+  libcunit1-dev libgeotiff-dev libgmp-dev libjson0-dev libjson-c-dev liblas-dev libmpfr-dev libopenscenegraph-dev libpq-dev libxml2-dev \
+  postgresql-server-dev-${POSTGRESQL_VERSION} \
+  xsltproc wget \
+  ImageMagick dblatex libxml2-utils
+SCRIPT
+
+$install_geos = <<-SCRIPT
+set -x
+# install GEOS
+cd && mkdir -p geos/ && cd geos/
+wget --quiet http://download.osgeo.org/geos/geos-${GEOS_VERSION}.tar.bz2 -O geos-${GEOS_VERSION}.tar.bz2
+tar xf geos-${GEOS_VERSION}.tar.bz2 --strip-components=1
+./configure > ~/geos.1.configure.stdout
+make -j $PROCESSOR_COUNT > ~/geos.2.make.stdout
+sudo make install > ~/geos.3.install.stdout
+sudo ldconfig > ~/geos.4.ldconfig.stdout
+cd && test -x geos
+SCRIPT
+
+$install_gdal = <<-SCRIPT
+set -x
+# install GDAL
+cd && mkdir -p gdal/ && cd gdal/
+wget --quiet http://download.osgeo.org/gdal/${GDAL_VERSION}/gdal-${GDAL_VERSION}.tar.gz -O gdal-${GDAL_VERSION}.tar.gz
+tar xf gdal-${GDAL_VERSION}.tar.gz --strip-components=1
+./configure --with-geos=/usr/local/bin/geos-config > ~/gdal.1.configure.stdout
+make -j $PROCESSOR_COUNT > ~/gdal.2.make.stdout
+sudo make install > ~/gdal.3.install.stdout
+sudo ldconfig > ~/gdal.4.ldconfig.stdout
+cd && test -x gdal
+SCRIPT
+
+$install_proj = <<-SCRIPT
+set -x
+# install PROJ
+cd && mkdir -p proj/ && cd proj/
+wget --quiet http://download.osgeo.org/proj/proj-${PROJ_VERSION}.tar.gz -O proj-${PROJ_VERSION}.tar.gz
+tar xf proj-${PROJ_VERSION}.tar.gz --strip-components=1
+./configure > ~/proj.1.configure.stdout
+make -j $PROCESSOR_COUNT > ~/proj.2.make.stdout
+sudo make install > ~/proj.3.install.stdout
+test -f /usr/local/include/proj_api.h
+SCRIPT
+
+$install_cgal = <<-SCRIPT
+set -x
+# install CGAL libraries
+# sudo apt-get install --yes -qq libcgal-dev # version 4.2, required is <= 4.3 by SFCGAL 1.3
+cd && mkdir -p cgal/ && cd cgal/
+wget --quiet https://gforge.inria.fr/frs/download.php/file/35139/CGAL-${CGAL_VERSION}.tar.xz -O CGAL-${CGAL_VERSION}.tar.xz
+tar xf CGAL-${CGAL_VERSION}.tar.xz --strip-components=1
+cmake . > ~/cgal.cmake.stdout
+make -j $PROCESSOR_COUNT > ~/cgal.2.make.stdout
+sudo make install > ~/cgal.3.install.stdout
+test -d /usr/local/lib/CGAL
+SCRIPT
+
+$install_sfcgal = <<-SCRIPT
+set -x
+# install SFCGAL
+cd && mkdir -p sfcgal/ && cd sfcgal/
+wget --quiet https://github.com/Oslandia/SFCGAL/archive/v${SFCGAL_VERSION}.tar.gz -O v${SFCGAL_VERSION}.tar.gz
+tar xf v${SFCGAL_VERSION}.tar.gz --strip-components=1
+cmake . > ~/sfcgal.1.cmake.stdout
+make -j $PROCESSOR_COUNT > ~/sfcgal.2.make.stdout
+sudo make install > ~/sfcgal.3.install.stdout
+test -x $sfcgal_config | tee -a sfcgal.9.test.stdout
+SCRIPT
+
+$install_postgis = <<-SCRIPT
+set -x
+# install POSTGIS
+cd && mkdir -p postgis/ && cd postgis/
+wget --quiet http://download.osgeo.org/postgis/source/postgis-${POSTGIS_VERSION}.tar.gz -O postgis-${POSTGIS_VERSION}.tar.gz
+tar xf postgis-${POSTGIS_VERSION}.tar.gz --strip-components=1
+sudo ./configure --with-geosconfig=/usr/local/bin/geos-config --with-gdalconfig=/usr/local/bin/gdal-config --with-sfcgal=/usr/local/bin/sfcgal-config --with-projdir=/usr/local --with-raster --with-topology > ~/postgis.1.configure.stdout
+sudo make > ~/postgis.2.make.stdout
+
+for extension in # NO!!! postgis postgis_topology postgis_sfcgal postgis_tiger_geocoder address_standardizer
+do
+  echo $extension
+  cd && cd postgis/extensions/$extension
+  sudo make -j $PROCESSOR_COUNT > ~/postgis.4a.$extension.make.stdout
+  sudo make install > ~/postgis.4b.$extension.install.stdout
+done
+
+cd && cd postgis/ && sudo make install > ~/postgis.8.install.stdout
+sudo ldconfig > ~/postgis.9.ldconfig.stdout
+SCRIPT
+
+$install_postgres = <<-SCRIPT
+set -x
+# install postgresql server
+sudo apt-get install --yes -qq postgresql-${POSTGRESQL_VERSION}
+SCRIPT
+
+$install_pgrouting = <<-SCRIPT
+set -x
+# install PGROUTING from package
+sudo apt-get install --yes -qq postgresql-${POSTGRESQL_VERSION}-pgrouting
+SCRIPT
+
+$create_gisdb = <<-SCRIPT
+set -x
 sudo -u postgres psql <<PSQL
+DROP DATABASE gisdb;
 CREATE DATABASE gisdb;
 \\connect gisdb;
 CREATE SCHEMA postgis;
@@ -40,25 +151,41 @@ ALTER DATABASE gisdb SET search_path=public, postgis, contrib;
 \\connect gisdb;
 CREATE EXTENSION postgis SCHEMA postgis;
 SELECT postgis_full_version();
---CREATE EXTENSION postgis_sfcgal SCHEMA postgis;
--- getting ERROR:  could not open extension control file "/usr/share/postgresql/9.6/extension/postgis_sfcgal.control": No such file or directory
---SELECT postgis_full_version();
+\\connect gisdb;
+CREATE EXTENSION postgis_sfcgal SCHEMA postgis;
+SELECT postgis_sfcgal_version();
+--
 CREATE  EXTENSION pgrouting SCHEMA postgis;
 SELECT * FROM pgr_version();
+--
+CREATE EXTENSION fuzzystrmatch SCHEMA postgis;
+CREATE SCHEMA tiger;
+CREATE EXTENSION postgis_tiger_geocoder SCHEMA tiger;
+CREATE EXTENSION address_standardizer SCHEMA postgis;
+SELECT na.address, na.streetname,na.streettypeabbrev, na.zip
+	FROM normalize_address('1 Devonshire Place, Boston, MA 02109') AS na;
 \\q
 PSQL
+SCRIPT
+
+$configure_postgres = <<-SCRIPT
+set -x
+export PG_HBA_CONF="/etc/postgresql/${POSTGRESQL_VERSION}/main/pg_hba.conf"
+# listen to all adresses
+sudo grep 'listen_addresses = ' $PG_HBA_CONF
+sudo sed "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" -i $PG_HBA_CONF
+sudo grep 'listen_addresses = ' $PG_HBA_CONF
 #
-sudo grep 'listen_addresses = ' /etc/postgresql/9.6/main/postgresql.conf
-sudo sed "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" -i /etc/postgresql/9.6/main/postgresql.conf
-sudo grep 'listen_addresses = ' /etc/postgresql/9.6/main/postgresql.conf
-#
-sudo tail /etc/postgresql/9.6/main/pg_hba.conf
-sudo grep -q 'hostssl .*all .*all .*10.0.2.2/32 .*md5' /etc/postgresql/9.6/main/pg_hba.conf || \
+sudo tail $PG_HBA_CONF
+sudo grep -q 'hostssl .*all .*all .*10.0.2.2/32 .*md5' $PG_HBA_CONF || \
 echo '
 hostssl    all            all              10.0.2.2/32            md5
-' | sudo tee -a /etc/postgresql/9.6/main/pg_hba.conf
-sudo tail /etc/postgresql/9.6/main/pg_hba.conf
-#
+' | sudo tee -a $PG_HBA_CONF
+sudo tail $PG_HBA_CONF
+SCRIPT
+
+$restart_postgres = <<-SCRIPT
+set -x
 sudo service postgresql restart
 #
 SCRIPT
@@ -74,11 +201,33 @@ Vagrant.configure("2") do |config|
   config.vm.hostname = HOST_NAME
   #
   config.vm.provider "virtualbox" do |vb|
-    vb.memory = "2018"
+    vb.memory = "4096"
 	vb.cpus = "2"
 	vb.name = HOST_NAME
   end
   #
-  config.vm.provision "shell", privileged: false, inline: $script
+  config.vm.provision "shell", privileged: false, inline: $add_repo
+  config.vm.provision "shell", privileged: false, inline: $install_required_packages,
+    env: { "POSTGRESQL_VERSION" => POSTGRESQL_VERSION }
+  config.vm.provision "shell", privileged: false, inline: $install_geos,
+    env: { "GEOS_VERSION" => GEOS_VERSION, "PROCESSOR_COUNT" => PROCESSOR_COUNT }
+  config.vm.provision "shell", privileged: false, inline: $install_gdal,
+    env: { "GDAL_VERSION" => GDAL_VERSION, "PROCESSOR_COUNT" => PROCESSOR_COUNT }
+  config.vm.provision "shell", privileged: false, inline: $install_proj,
+    env: { "PROJ_VERSION" => PROJ_VERSION, "PROCESSOR_COUNT" => PROCESSOR_COUNT }
+  config.vm.provision "shell", privileged: false, inline: $install_cgal,
+    env: { "CGAL_VERSION" => CGAL_VERSION, "PROCESSOR_COUNT" => PROCESSOR_COUNT }
+  config.vm.provision "shell", privileged: false, inline: $install_sfcgal,
+    env: { "SFCGAL_VERSION" => SFCGAL_VERSION, "PROCESSOR_COUNT" => PROCESSOR_COUNT }
+  config.vm.provision "shell", privileged: false, inline: $install_postgis,
+    env: { "POSTGIS_VERSION" => POSTGIS_VERSION, "PROCESSOR_COUNT" => PROCESSOR_COUNT }
+  config.vm.provision "shell", privileged: false, inline: $install_postgres,
+    env: { "POSTGRESQL_VERSION" => POSTGRESQL_VERSION }
+  config.vm.provision "shell", privileged: false, inline: $install_pgrouting,
+    env: { "POSTGRESQL_VERSION" => POSTGRESQL_VERSION }
+  config.vm.provision "shell", privileged: false, inline: $create_gisdb
+  config.vm.provision "shell", privileged: false, inline: $configure_postgres,
+    env: { "POSTGRESQL_VERSION" => POSTGRESQL_VERSION }
+  config.vm.provision "shell", privileged: false, inline: $restart_postgres
   #
 end
