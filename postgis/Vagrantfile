@@ -172,9 +172,13 @@ $configure_postgres = <<-SCRIPT
 set -x
 export PG_HBA_CONF="/etc/postgresql/${POSTGRESQL_VERSION}/main/pg_hba.conf"
 # listen to all adresses
-sudo grep 'listen_addresses = ' $PG_HBA_CONF
-sudo sed "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" -i $PG_HBA_CONF
-sudo grep 'listen_addresses = ' $PG_HBA_CONF
+#sudo grep 'listen_addresses = ' $PG_HBA_CONF
+#sudo sed "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" -i $PG_HBA_CONF
+#sudo grep 'listen_addresses = ' $PG_HBA_CONF
+sudo -u postgres psql <<PSQL
+ALTER SYSTEM SET listen_addresses = '*';
+\\q
+PSQL
 #
 sudo tail $PG_HBA_CONF
 sudo grep -q 'hostssl .*all .*all .*10.0.2.2/32 .*md5' $PG_HBA_CONF || \
