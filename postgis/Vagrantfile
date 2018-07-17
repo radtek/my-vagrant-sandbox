@@ -104,7 +104,7 @@ tar xf v${SFCGAL_VERSION}.tar.gz --strip-components=1
 cmake . > ~/sfcgal.1.cmake.stdout
 make -j $PROCESSOR_COUNT > ~/sfcgal.2.make.stdout
 sudo make install > ~/sfcgal.3.install.stdout
-test -x $sfcgal_config | tee -a sfcgal.9.test.stdout
+test -x $sfcgal_config | tee -a ~/sfcgal.9.test.stdout
 SCRIPT
 
 $install_postgis = <<-SCRIPT
