@@ -213,6 +213,10 @@ Vagrant.configure("2") do |config|
   config.vm.provision "shell", privileged: false, inline: $add_repo
   config.vm.provision "shell", privileged: false, inline: $install_required_packages,
     env: { "POSTGRESQL_VERSION" => POSTGRESQL_VERSION }
+  config.vm.provision "shell", privileged: false, inline: $install_postgres,
+    env: { "POSTGRESQL_VERSION" => POSTGRESQL_VERSION }
+  config.vm.provision "shell", privileged: false, inline: $install_pgrouting,
+    env: { "POSTGRESQL_VERSION" => POSTGRESQL_VERSION }
   config.vm.provision "shell", privileged: false, inline: $install_geos,
     env: { "GEOS_VERSION" => GEOS_VERSION, "PROCESSOR_COUNT" => PROCESSOR_COUNT }
   config.vm.provision "shell", privileged: false, inline: $install_gdal,
@@ -225,10 +229,6 @@ Vagrant.configure("2") do |config|
     env: { "SFCGAL_VERSION" => SFCGAL_VERSION, "PROCESSOR_COUNT" => PROCESSOR_COUNT }
   config.vm.provision "shell", privileged: false, inline: $install_postgis,
     env: { "POSTGIS_VERSION" => POSTGIS_VERSION, "PROCESSOR_COUNT" => PROCESSOR_COUNT }
-  config.vm.provision "shell", privileged: false, inline: $install_postgres,
-    env: { "POSTGRESQL_VERSION" => POSTGRESQL_VERSION }
-  config.vm.provision "shell", privileged: false, inline: $install_pgrouting,
-    env: { "POSTGRESQL_VERSION" => POSTGRESQL_VERSION }
   config.vm.provision "shell", privileged: false, inline: $create_gisdb
   config.vm.provision "shell", privileged: false, inline: $configure_postgres,
     env: { "POSTGRESQL_VERSION" => POSTGRESQL_VERSION }
