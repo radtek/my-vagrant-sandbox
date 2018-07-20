@@ -12,6 +12,9 @@ if [[ $? != 0 ]]; then exit 1; fi
 #
 rpm --install elasticsearch-6.2.4.rpm
 #
+# bind to 0.0.0.0
+cp /vagrant/elasticsearch.yml /etc/elasticsearch/elasticsearch.yml
+#
 systemctl start elasticsearch.service
 systemctl enable elasticsearch.service
 systemctl status elasticsearch.service
