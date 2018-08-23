@@ -60,6 +60,8 @@ ip_addr=$(getent hosts luigi.local | awk '{print $1}')
 echo $ip_addr
 echo "host    all             luigi           $ip_addr/32       md5" \
 | sudo tee -a /var/lib/pgsql/data/pg_hba.conf
+sudo sed 's/host    all             all             127.0.0.1\/32            ident/host    all             all             127.0.0.1\/32            md5/' -i /var/lib/pgsql/data/pg_hba.conf
+sudo sed 's/host    all             all             ::1\/128                 ident/host    all             all             ::1\/128                 md5/' -i /var/lib/pgsql/data/pg_hba.conf
 sudo tail /var/lib/pgsql/data/pg_hba.conf  
 #
 sudo grep listen /var/lib/pgsql/data/postgresql.conf
@@ -69,7 +71,9 @@ sudo grep listen /var/lib/pgsql/data/postgresql.conf
 #
 sudo systemctl restart postgresql
 #
-PGPASSWORD=abc123 psql -U luigi -d toplists -h luigi.local -p 5432 -c '\l'
+PGPASSWORD=abc123 psql -U luigi -d toplists -h 127.0.0.1 -p 5432 -c '\\l'
+PGPASSWORD=abc123 psql -U luigi -d toplists -h localhost -p 5432 -c '\\l' # IPv6
+PGPASSWORD=abc123 psql -U luigi -d toplists -h luigi.local -p 5432 -c '\\l' # avahi
 #
 PYTHONPATH='.' luigi --module top_artists ArtistToplistToDatabase --local-scheduler --date-interval 2012-06
 #
