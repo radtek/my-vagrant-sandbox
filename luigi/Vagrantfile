@@ -1,0 +1,102 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+HOST_NAME="luigi"
+IP_ADDRESS="192.168.100.35"
+SSH_PORT=2235
+#
+$script = <<-SCRIPT
+set -x
+#
+sudo yum -y update
+#
+if [[ ! "$(rpm -q epel-release)" = "epel-release-"* ]]
+then sudo yum install -y epel-release; fi
+#
+echo HOST_NAME=${HOST_NAME}
+echo IP_ADDRESS=${IP_ADDRESS}
+#
+hostname
+hostname -I
+#
+cat /etc/system-release
+#
+python --version
+#
+sudo yum -y install python-pip
+sudo pip install --upgrade pip
+pip --version
+#
+sudo pip install --upgrade setuptools
+#
+sudo pip install luigi
+luigi --help
+#
+luigid &
+#
+curl localhost:8082
+#
+# https://luigi.readthedocs.io/en/stable/example_top_artists.html
+wget https://github.com/spotify/luigi/raw/master/examples/top_artists.py -O top_artists.py
+sudo pip install botocore
+PYTHONPATH='.' luigi --module top_artists AggregateArtists --local-scheduler --date-interval 2012-06
+PYTHONPATH='.' luigi --module top_artists Top10Artists --local-scheduler --date-interval 2012-06
+sudo pip install psycopg2
+sudo yum install -y postgresql-server postgresql-contrib
+sudo postgresql-setup initdb
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+sudo su - postgres <<PG
+createuser luigi
+createdb toplists -O luigi
+psql <<PSQL
+ALTER USER luigi WITH PASSWORD 'abc123'; -- as given in top_artists.py
+--ALTER SYSTEM SET listen_addresses TO '*'; -- PostgeSQL 10?
+PSQL
+PG
+createdb toplists
+#
+ip_addr=$(getent hosts luigi.local | awk '{print $1}')
+echo $ip_addr
+echo "host    all             luigi           $ip_addr/32       md5" \
+| sudo tee -a /var/lib/pgsql/data/pg_hba.conf
+sudo tail /var/lib/pgsql/data/pg_hba.conf  
+#
+sudo grep listen /var/lib/pgsql/data/postgresql.conf
+echo "listen_addresses = '*'" \
+| sudo tee -a /var/lib/pgsql/data/postgresql.conf
+sudo grep listen /var/lib/pgsql/data/postgresql.conf
+#
+sudo systemctl restart postgresql
+#
+PGPASSWORD=abc123 psql -U luigi -d toplists -h luigi.local -p 5432 -c '\l'
+#
+PYTHONPATH='.' luigi --module top_artists ArtistToplistToDatabase --local-scheduler --date-interval 2012-06
+#
+SCRIPT
+# 
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/centos-7.4"
+  #
+  config.vm.network "forwarded_port", guest: 22, host: SSH_PORT, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 8082, host: 8082, host_ip: "127.0.0.1"
+  #
+  config.vm.network "private_network", ip: IP_ADDRESS
+  #
+  config.vm.hostname = HOST_NAME
+  #
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "512"
+	vb.cpus = "2"
+	vb.name = HOST_NAME
+  end
+  #
+  config.vm.provision "shell", path: "../common/avahi.sh"
+  #
+  config.vm.provision "shell",
+  env: {
+	"IP_ADDRESS" => IP_ADDRESS,
+	"HOST_NAME" => HOST_NAME
+  }, inline: $script, privileged: false  
+  #
+end
